@@ -1,2 +1,2 @@
 
-Rub your Windows Terminal until it shines, with this single-script CLI overhaul.
+Rub your Windows Terminal to make it shine with this single-script CLI overhaul.
