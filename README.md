@@ -1,3 +1,4 @@
+<img alt="wt" src="https://github.com/user-attachments/assets/0c437393-4e3b-424a-ae44-7eeefaf8fc76" />
 
 `rubMyCLI.ps1` customizes both **PowerShell** and **CMD** by installing a curated set of CLI tools through [Scoop](https://scoop.sh).  
  
