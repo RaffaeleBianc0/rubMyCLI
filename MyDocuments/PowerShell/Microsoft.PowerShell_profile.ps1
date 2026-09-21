@@ -21,7 +21,7 @@ function NewItem {
 	$script:itemStart = Get-Date 
 	if ($PSVersionTable.PSVersion.Major -gt 5) { 
 		$p=[Math]::Floor((++$script:indiceComponente+0)/($script:indiceComponente+1) * 100)
-		Write-Progress -Activity "             Caricamento Moduli/Funzioni..." -Status "$p% $nomeComponente..." -PercentComplete $p
+		Write-Progress -Activity "Caricamento Moduli/Funzioni..." -Status "$p% $nomeComponente..." -PercentComplete $p
 	}
 }
 
@@ -38,26 +38,148 @@ function PrintDebug {
 
 
 # FastFetch / Winfetch:
-if (Get-Command fastfetch.exe -errorAction SilentlyContinue) {
-	if ($PSVersionTable.PSVersion.Major -gt 5) { $fastfetchPS = "fastfetch.exe --logo $env:APPDATA\WindowsTerminal\LogoPS.chafa" }
-	else { $fastfetchPS = "fastfetch.exe --logo $env:APPDATA\WindowsTerminal\LogoPS5.chafa" }
-	function f() { 1..$($Host.UI.RawUI.BufferSize.Height) | ForEach-Object { Write-Host "" }; Invoke-Expression $fastfetchPS }
-	Write-Host ""
-	Invoke-Expression $fastfetchPS
-}
-# Winfetch come piano B solo su pwsh>5, ma è più lento
-elseif ((Get-Command winfetch.ps1 -errorAction SilentlyContinue) -And ($PSVersionTable.PSVersion.Major -gt 5)) {
-	function f() { winfetch.ps1 }
-	Clear-Host
-	winfetch.ps1 "$env:APPDATA\WindowsTerminal\LogoPS.png" -ascii -imgwidth 40 -cpustyle "bartext" -memorystyle "bartext" -diskstyle "bartext" -batterystyle "bartext" -showdisks @("C:", "G:") -showpkgs ""
-}
-# Nel caso non ci siano installati né FastFetch né Winfetch:
-else {
-	Write-Host "PowerShell $($PSVersionTable.PSVersion.ToString())" -ForegroundColor yellow
-	Write-Host ""
-}
+function f() {
+	if (Get-Command fastfetch.exe -errorAction SilentlyContinue) {
+		if ($PSVersionTable.PSVersion.Major -gt 5) { 
+			fastfetch.exe --logo $env:APPDATA\WindowsTerminal\LogoPS.chafa
+		}
+		else { 
+			fastfetch.exe --logo $env:APPDATA\WindowsTerminal\LogoPS5.chafa
+		}
+		Write-Host ""
+	}
 
+	elseif ((Get-Command winfetch.ps1 -errorAction SilentlyContinue) -And ($PSVersionTable.PSVersion.Major -gt 5)) {
+		# Winfetch come piano B solo su pwsh>5, ma è più lento
+		Clear-Host
+		winfetch.ps1 "$env:APPDATA\WindowsTerminal\LogoPS.png" -ascii -imgwidth 40 -cpustyle "bartext" -memorystyle "bartext" -diskstyle "bartext" -batterystyle "bartext" -showdisks @("C:", "G:") -showpkgs ""
+	}
 
+	else { 	
+		# Nel caso non ci siano installati né FastFetch né Winfetch
+		# System info with Windows 11 logo - native PowerShell 5 only
+		$ErrorActionPreference = 'SilentlyContinue'
+
+		$block = [string][char]0x2588   # full block
+		$light = [string][char]0x2591   # light shade
+
+		function Get-Bar([double]$percent, [int]$length = 16) {
+			$filled = [int][math]::Round($percent / 100 * $length)
+			$filled = [math]::Max(0, [math]::Min($length, $filled))
+			return ($block * $filled) + ($light * ($length - $filled))
+		}
+
+		function Get-LoadColor([double]$percent) {
+			if ($percent -lt 60) { return 'Green' }
+			if ($percent -lt 85) { return 'Yellow' }
+			return 'Red'
+		}
+
+		# Fill = bar fill percentage, Load = value used to pick the bar color
+		function New-Line([string]$Type, [string]$Key = '', [string]$Value = '', [double]$Fill = -1, [double]$Load = -1) {
+			[pscustomobject]@{ Type = $Type; Key = $Key; Value = $Value; Fill = $Fill; Load = $Load }
+		}
+
+		# --- Collect data ---
+		$os      = Get-CimInstance Win32_OperatingSystem
+		$cs      = Get-CimInstance Win32_ComputerSystem
+		$cpu     = Get-CimInstance Win32_Processor | Select-Object -First 1
+		$gpus    = @(Get-CimInstance Win32_VideoController | Where-Object { $_.Name })
+		$sysDrv  = if ($env:SystemDrive) { $env:SystemDrive } else { 'C:' }
+		$disk    = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$sysDrv'"
+		$battery = Get-CimInstance Win32_Battery | Select-Object -First 1
+
+		$osName  = $os.Caption -replace 'Microsoft ', ''
+		$uptime  = (Get-Date) - $os.LastBootUpTime
+		$cpuName = ($cpu.Name -replace '\s+', ' ').Trim()
+
+		# Memory values are in KB, dividing by 1MB gives GB
+		$ramTotal = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
+		$ramUsed  = [math]::Round(($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / 1MB, 2)
+		$ramPct   = if ($ramTotal -gt 0) { [math]::Round($ramUsed / $ramTotal * 100) } else { 0 }
+
+		$diskTotal = [math]::Round($disk.Size / 1GB, 1)
+		$diskUsed  = [math]::Round(($disk.Size - $disk.FreeSpace) / 1GB, 1)
+		$diskPct   = if ($disk.Size -gt 0) { [math]::Round(($disk.Size - $disk.FreeSpace) / $disk.Size * 100) } else { 0 }
+
+		$resGpu = $gpus | Where-Object { $_.CurrentHorizontalResolution } | Select-Object -First 1
+
+		# --- Build lines ---
+		$title = "$env:USERNAME@$env:COMPUTERNAME"
+		$lines = @()
+		$lines += New-Line 'title' -Value $title
+		$lines += New-Line 'sep'   -Value ('-' * $title.Length)
+		$lines += New-Line 'info' 'Host'   $cs.Model
+		$lines += New-Line 'info' 'OS'     "$osName ($($os.OSArchitecture)) build $($os.BuildNumber)"
+		$lines += New-Line 'info' 'Uptime' "$($uptime.Days)d $($uptime.Hours)h $($uptime.Minutes)m"
+		$lines += New-Line 'info' 'Shell'  "PowerShell $($PSVersionTable.PSVersion)"
+		$lines += New-Line 'info' 'CPU'    "$cpuName ($($cpu.NumberOfCores)C/$($cpu.NumberOfLogicalProcessors)T)"
+		foreach ($g in $gpus) {
+			$lines += New-Line 'info' 'GPU' $g.Name
+		}
+		if ($resGpu) {
+			$lines += New-Line 'info' 'Screen' "$($resGpu.CurrentHorizontalResolution)x$($resGpu.CurrentVerticalResolution) @ $($resGpu.CurrentRefreshRate)Hz"
+		}
+		$lines += New-Line 'info' 'RAM' "${ramUsed}GB / ${ramTotal}GB ($ramPct%)" $ramPct $ramPct
+		$lines += New-Line 'info' "Disk $sysDrv" "${diskUsed}GB / ${diskTotal}GB ($diskPct%)" $diskPct $diskPct
+		if ($battery) {
+			$batPct = [double]$battery.EstimatedChargeRemaining
+			# Bar shows charge level, color is inverted so that low charge is red
+			$lines += New-Line 'info' 'Battery' "$batPct%" $batPct (100 - $batPct)
+		}
+
+		# --- Logo: Windows 11, 4 squares with a gap (height 11, width 22) ---
+		$logoH   = 11
+		$logoW   = 22
+		$gapRow  = 5
+		$gapCols = 2
+		$sqW     = ($logoW - $gapCols) / 2
+
+		$total  = [math]::Max($lines.Count, $logoH)
+		$offset = [math]::Max(0, [math]::Floor(($lines.Count - $logoH) / 2))
+
+		Write-Host ''
+		for ($i = 0; $i -lt $total; $i++) {
+			# Logo column
+			$j = $i - $offset
+			if ($j -ge 0 -and $j -lt $logoH -and $j -ne $gapRow) {
+				$logoPart = ($block * $sqW) + (' ' * $gapCols) + ($block * $sqW)
+			} else {
+				$logoPart = ' ' * $logoW
+			}
+			Write-Host $logoPart -NoNewline -ForegroundColor Blue
+			Write-Host '   ' -NoNewline
+
+			# Info column
+			if ($i -ge $lines.Count) { Write-Host ''; continue }
+			$l = $lines[$i]
+			switch ($l.Type) {
+				'title' { Write-Host $l.Value -ForegroundColor Cyan }
+				'sep'   { Write-Host $l.Value -ForegroundColor DarkGray }
+				default {
+					Write-Host ('{0,-8}' -f $l.Key) -NoNewline -ForegroundColor White
+					if ($l.Fill -ge 0) {
+						# Bar first (same column for all bars), then the numeric value
+						Write-Host (Get-Bar $l.Fill) -NoNewline -ForegroundColor (Get-LoadColor $l.Load)
+						Write-Host (' ' + $l.Value) -ForegroundColor Yellow
+					} else {
+						Write-Host $l.Value -ForegroundColor Yellow
+					}
+				}
+			}
+		}
+
+		# Empty line, then color palette strip
+		Write-Host ''
+		Write-Host (' ' * ($logoW + 3)) -NoNewline
+		foreach ($c in 'DarkRed','DarkGreen','DarkYellow','DarkBlue','DarkMagenta','DarkCyan','Gray','White') {
+			Write-Host ($block * 2) -NoNewline -ForegroundColor $c
+		}
+		Write-Host "`n"
+		# Write-Host "PowerShell $($PSVersionTable.PSVersion.ToString())" -ForegroundColor yellow
+		Write-Host ""
+	}
+}
 
 if ($debugMessages) { Write-Host "$esc[1m+This  = Total`t Funzioni e moduli caricati:" -ForegroundColor blue }
 
@@ -168,14 +290,9 @@ function Prompt {
 	}
 	return " "
 }
-PrintDebug
-
-
-
-
-
-NewItem("OhMyPosh")
-if ($PSVersionTable.PSVersion.Major -gt 5) { 
+if ($PSVersionTable.PSVersion.Major -gt 5 -and
+    (Get-Command oh-my-posh -ErrorAction SilentlyContinue) -and
+    (Test-Path "$env:APPDATA\oh-my-posh\rb.omp.json")) {
 	& ([ScriptBlock]::Create((oh-my-posh init pwsh --config "$env:APPDATA\oh-my-posh\rb.omp.json" --print) -join "`n"))
 }
 PrintDebug
@@ -400,18 +517,16 @@ PrintDebug
 
 
 # Visualizzo la durata del caricamento del profilo:
-#if ($PSVersionTable.PSVersion.Major -gt 5) {
-	$elapsed = (Get-Date) - $scriptStartTime
-	if ($debugMessages) { 
-		Write-Host "         $([Math]::Round($elapsed.TotalSeconds, 2))s" -ForegroundColor 'blue' -NoNewline
-		Write-Host "`t $esc[1mTempo totale caricamento `$PROFILE"  -ForegroundColor 'blue'
-	} else {
-		Write-Host "                                            " -NoNewline
-		Write-Host "$esc[1m`$PROFILE loading time" -ForegroundColor 'DarkYellow' -NoNewline
-		Write-Host ": $([Math]::Round($elapsed.TotalSeconds, 2))s"
-	}
-	Write-Host ""
-# }
+$elapsed = (Get-Date) - $scriptStartTime
+if ($debugMessages) { 
+	Write-Host "         $([Math]::Round($elapsed.TotalSeconds, 2))s" -ForegroundColor 'blue' -NoNewline
+	Write-Host "`t $esc[1mTempo totale caricamento `$PROFILE"  -ForegroundColor 'blue'
+} 
+else {
+# 	Write-Host "$esc[1m`$PROFILE loading time" -ForegroundColor 'DarkYellow' -NoNewline
+# 	Write-Host ": $([Math]::Round($elapsed.TotalSeconds, 2))s"
+	1..$($Host.UI.RawUI.BufferSize.Height) | ForEach-Object {""}
+}
 
 #  ___ ___  ___
 # | __/ _ \| __|

@@ -1,36 +1,26 @@
 <#
-TODO:
-    - Translate all the function names and comments in English.
-    - Enhance this comments section with appropriate items.
-    - Enhance the progress output with any relevant stuff you think it would be useful.
 =============================================================================
 .SYNOPSIS
     Personalizza la CLI (interfaccia a linea di comando) di Windows,
-    sia PowerShell sia CMD, eseguendo queste attività:
-    - Installazione scoop package manager.
-    - Installazione Windows Terminal (se necessario).
-    - Installazione ultima versione di PowerShell.
-    - Installazione font + icone per CLI.
-    - Installazione Moduli PowerShell ed Applicazioni varie per CLI.
-    - Configura Windows Terminal + $PROFILE PowerShell + tutte le app CLI.
-.NOTES
-    - Se all'avvio di questo script compare l'errore 
-        "[...] cannot be loaded because running scripts is disabled on this system",
-      allora:
-        1. Aprire un prompt PowerShell eseguito come Amministratore
-        2. Eseguire questo comando:
-            Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser
+    sia PowerShell sia CMD.
 =============================================================================
 #>
+
+# Previene prompt interattivi e blocchi di esecuzione
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+
+Write-Host "Confermare l'installazione di NuGet se richiesta di seguito (prerequisito necessario):" -ForegroundColor Cyan
+if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force
+}
+Clear-Host
+Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted -ErrorAction SilentlyContinue
 
 #Region Funzioni
 function AggiornaProgressbar {
     <#
     .SYNOPSIS
-        Aggiornamento Progressbar con ETA (Estimated Time of Arrival) e layout a larghezza fissa.
-    .DESCRIPTION
-        Progressbar avanzata con supporto per stili PS5, PS7 e Inline su riga di comando.
-        Consente di specificare $MaxTextLength per mantenere fisso il campo del testo/descrizione.
+        Aggiornamento Progressbar a larghezza piena con testo in negativo.
     #>
     [CmdletBinding()]
     param(
@@ -54,7 +44,6 @@ function AggiornaProgressbar {
     $scriptName = Split-Path $PSCommandPath -Leaf
     $now = Get-Date
 
-    # Inizializzazione storico per Moving Average (Stima ETA più precisa)
     if ($null -eq $Script:ProgressHistory) {
         $Script:ProgressHistory = [System.Collections.Generic.Queue[PSCustomObject]]::new()
     }
@@ -66,7 +55,6 @@ function AggiornaProgressbar {
 
     $timeSpan = $now - $Script:StartTime
 
-    # Calcolo velocità
     $firstSample = $Script:ProgressHistory.Peek()
     $deltaSeconds = ($now - $firstSample.Time).TotalSeconds
     $deltaItems = $PassNumber - $firstSample.Item
@@ -77,125 +65,72 @@ function AggiornaProgressbar {
         $itemsPerSecond = $PassNumber / ($timeSpan.TotalSeconds + 0.001)
     }
 
-    # Formattazione Velocità a larghezza fissa (es: "  5.0/sec" o " 120.5/min")
-    if (([Math]::Round(($itemsPerSecond), 0)) -lt 60) {
-        $speedVal = [Math]::Round(($itemsPerSecond * 60), 1)
-        $Speed = "{0,5:0.0}/min" -f $speedVal
-    } else {
-        $speedVal = [Math]::Round(($itemsPerSecond), 1)
-        $Speed = "{0,5:0.0}/sec" -f $speedVal
-    }
-
-    # Protezione su PassNumber
     $cappedPass = [Math]::Min($PassNumber, $TotalNumber)
     $pctRatio = $cappedPass / $TotalNumber
     $pctVal = [Math]::Round(($pctRatio * 100), 0)
     
-    # 1. Percentuale a 4 caratteri (es: "  5%", " 50%", "100%")
-    $percentualeStr = "{0,4}" -f "$pctVal%"
-    
-    # 2. Conteggio Item a larghezza fissa (es: " 05/100" o "005/100")
+    # 1. Sinistra: % avanzamento, nn/mm, descrizione
+    $percentualeStr = "{0,3}%" -f $pctVal
     $totalDigits = $TotalNumber.ToString().Length
     $passStr = $cappedPass.ToString().PadLeft($totalDigits, ' ')
     $itemCountStr = "$passStr/$TotalNumber"
 
-    # 3. Tempo Trascorso (HH:mm:ss)
+    $leftText = " $percentualeStr | $itemCountStr | $Description"
+
+    # 2. Destra: elapsed time, ETA
     $elapsedStr = "{0:D2}:{1:D2}:{2:D2}" -f [int]$timeSpan.Hours, [int]$timeSpan.Minutes, [int]$timeSpan.Seconds
     
-    # Base della stringa di stato
-    $StatusString = "$percentualeStr $itemCountStr $elapsedStr"
-    
-	# 4. ETA e Velocità a larghezza fissa (solo dal 4° elemento in poi)
-    if ($cappedPass -gt 3) {
-        $remainingSeconds = 0
-        if ($TotalNumber -gt 3 -and $cappedPass -lt $TotalNumber) {
-            if ($itemsPerSecond -gt 0) {
-                $remainingSeconds = ($TotalNumber - $cappedPass) / $itemsPerSecond
-            }
-            $eta = $now.AddSeconds($remainingSeconds)
-            
-            if ($now.ToString("d") -eq $eta.ToString("d")) {
-                $FormattedETA = $eta.ToString("HH:mm:ss")
-            } else {
-                $FormattedETA = $eta.ToString("dd/MM/yyyy HH:mm:ss")
-            }
-            $StatusString += " ETA=$FormattedETA $Speed"
-        } 
-        elseif ($cappedPass -eq $TotalNumber) {
-            $StatusString += " ETA=--:--:-- $Speed"
-        }
+    if ($cappedPass -gt 3 -and $TotalNumber -gt 3 -and $cappedPass -lt $TotalNumber) {
+        $remainingSeconds = if ($itemsPerSecond -gt 0) { ($TotalNumber - $cappedPass) / $itemsPerSecond } else { 0 }
+        $eta = $now.AddSeconds($remainingSeconds)
+        $FormattedETA = if ($now.ToString("d") -eq $eta.ToString("d")) { $eta.ToString("HH:mm:ss") } else { $eta.ToString("dd/MM/yyyy HH:mm:ss") }
+        $rightText = "$elapsedStr | ETA=$FormattedETA "
+    } elseif ($cappedPass -eq $TotalNumber) {
+        $rightText = "$elapsedStr | ETA=--:--:-- "
     } else {
-        # Per i primi 3 elementi stampa uno spazio vuoto equivalente
-        # Formato standard ETA (8 o 19 caratteri) + " ETA=" (5) + " " (1) + Speed (10)
-        # Se la data è del giorno stesso, ETA è HH:mm:ss (8 char).
-        # Calcolo padding fisso coerente con l'output standard del giorno (24 spazi complessivi):
-        $StatusString += "                       "
-    }
-	
-    # 5. Normalizzazione Descrizione in base a $MaxTextLength
-    if ($MaxTextLength -gt 0) {
-        if ($Description.Length -gt $MaxTextLength) {
-            $FormattedDescription = $Description.Substring(0, $MaxTextLength)
-        } else {
-            $FormattedDescription = $Description.PadRight($MaxTextLength, ' ')
-        }
-    } else {
-        $FormattedDescription = $Description
+        $rightText = "$elapsedStr | ETA=--:--:-- "
     }
 
     switch ($Style) {
-        "PS7" {
-            if ($PSVersionTable.PSVersion.Major -ge 7 -and $null -ne $PSStyle) {
-                $PSStyle.Progress.View = 'Minimal'
-            }
-            $wpParams = @{
-                Activity        = $FormattedDescription
-                Status          = $StatusString
-                PercentComplete = $pctVal
-            }
-            if ($TotalNumber -gt 3) { $wpParams['SecondsRemaining'] = $remainingSeconds }
-            Write-Progress @wpParams
-        }
-
         "Inline" {
-            Write-Progress -Activity $FormattedDescription -Completed
+            Write-Progress -Activity $Description -Completed
 
-            $prefix = "$FormattedDescription [$StatusString] "
-            $suffix = ""
-            
-            $cleanPrefix = $prefix -replace '\x1b\[[0-9;]*m', ''
-            
             $bufferWidth = $Host.UI.RawUI.WindowSize.Width
-            $availableWidth = $bufferWidth - $cleanPrefix.Length - $suffix.Length - 1
 
-            if ($availableWidth -gt 5) {
-                $filledLength = [Math]::Round($availableWidth * $pctRatio)
-                $emptyLength = $availableWidth - $filledLength
-                
-                $filledBar = [string]::new([char]0x2588, $filledLength)
-                $emptyBar = [string]::new([char]0x2591, $emptyLength)
-                $bar = $filledBar + $emptyBar
+            # Spazio di riempimento tra il blocco di sinistra e quello di destra
+            $spacerLen = $bufferWidth - ($leftText.Length + $rightText.Length)
+            if ($spacerLen -lt 1) {
+                $spacer = " "
             } else {
-                $bar = ""
+                $spacer = [string]::new([char]32, $spacerLen)
             }
 
-            $outLine = "`r$prefix$bar$suffix"
-            $padLen = $bufferWidth - ($cleanPrefix.Length + $bar.Length + $suffix.Length)
-            if ($padLen -gt 0) { $outLine += [string]::new([char]32, $padLen) }
+            $fullLineText = "$leftText$spacer$rightText"
+            if ($fullLineText.Length -gt $bufferWidth) {
+                $fullLineText = $fullLineText.Substring(0, $bufferWidth)
+            }
 
-            Write-Host -NoNewline $outLine
+            # Sequenze ANSI: \e[7m (Inverti colori/negativo), \e[0m (Reset)
+            # Only the filled part of the line (proportional to the percentage) is colored:
+            # \e[46m = cyan background, \e[30m = black text
+            $esc = [char]27
+            $filledLen = [int][Math]::Round($fullLineText.Length * $pctRatio)
+            $filledLen = [Math]::Max(0, [Math]::Min($filledLen, $fullLineText.Length))
+            $filledPart = $fullLineText.Substring(0, $filledLen)
+            $emptyPart = $fullLineText.Substring($filledLen)
+            $negativeLine = "${esc}[46;30m$filledPart${esc}[0m$emptyPart"
+
+            # Riga vuota prima della progressbar
+            Write-Host ""
+            Write-Host "`r$negativeLine"
         }
 
-        Default { # PS5
-            if ($PSVersionTable.PSVersion.Major -ge 7 -and $null -ne $PSStyle) {
-                $PSStyle.Progress.View = 'Classic'
-            }
+        Default { # PS5 / PS7 standard
             $wpParams = @{
-                Activity        = $FormattedDescription
-                Status          = $StatusString
+                Activity        = $Description
+                Status          = "$percentualeStr $itemCountStr $elapsedStr $rightText"
                 PercentComplete = $pctVal
             }
-            if ($TotalNumber -gt 3) { $wpParams['SecondsRemaining'] = $remainingSeconds }
             Write-Progress @wpParams
         }
     }
@@ -204,11 +139,6 @@ function AggiornaProgressbar {
 }
 
 function Write-LogAdvanced {
-    <#
-      .SYNOPSIS
-          Scrive un testo in "formato log" nella console e/o in un LogFile.
-    #>
-
     Param(
         [Parameter(Mandatory = $True)]
         [String] $Message,
@@ -291,10 +221,10 @@ function Install-ScoopApp {
     )
     Write-Verbose -Message "[Scoop] Verifica installazione $Package"
     if (! (scoop info $Package 2>$null).Installed ) {
-        Write-Verbose -Message "scoop: Installazione $Package..."
+        Write-Verbose -Message "Scoop: Installazione $Package..."
         scoop install $Package
     } else {
-        Write-Verbose -Message "scoop: Aggiornamento $Package..."
+        Write-Verbose -Message "Scoop: Aggiornamento $Package..."
         scoop update $Package
     }
 }
@@ -304,15 +234,13 @@ function Enable-ScoopBucket {
         [string]$Bucket
     )
     if (!($(scoop bucket list 2>$null).Name -eq "$Bucket")) {
-        Write-Verbose -Message "scoop: Aggiunta bucket $Bucket..."
+        Write-Verbose -Message "Scoop: Aggiunta bucket $Bucket..."
         scoop bucket add $Bucket
     } else {
-        Write-Verbose -Message "scoop: Bucket $Bucket gia' presente."
+        Write-Verbose -Message "Scoop: Bucket $Bucket gia' presente."
     }
 }
 #EndRegion
-
-
 
 $ScriptName = Split-Path $PSCommandPath -Leaf
 $Host.UI.RawUI.WindowTitle = "${ScriptName}"
@@ -322,8 +250,6 @@ $ArrayPacchettiFondamentali = @(
     [PSCustomObject]@{ Nome = 'Winget'; Comando = { Install-ScoopApp "winget" } },
     [PSCustomObject]@{ Nome = 'PowerShell'; Comando = { Install-ScoopApp "pwsh" } },
     [PSCustomObject]@{ Nome = 'Terminal-Icons'; Comando = { Install-ScoopApp "terminal-icons" } },
-    [PSCustomObject]@{ Nome = 'Oh My Posh'; Comando = { Install-ScoopApp "oh-my-posh" } },
-    [PSCustomObject]@{ Nome = 'Fastfetch'; Comando = { Install-ScoopApp "fastfetch" } },
     [PSCustomObject]@{ Nome = 'bat'; Comando = { Install-ScoopApp "bat" } },
     [PSCustomObject]@{ Nome = 'CompletionPredictor'; Comando = { Install-Module -Name CompletionPredictor -Repository PSGallery -Force -Scope CurrentUser } },
     [PSCustomObject]@{ Nome = 'Clink'; Comando = { Install-ScoopApp "clink" } },
@@ -331,7 +257,6 @@ $ArrayPacchettiFondamentali = @(
     [PSCustomObject]@{ Nome = 'Clink autorun'; Comando = { clink autorun install } },
     [PSCustomObject]@{ Nome = 'fzf'; Comando = { Install-ScoopApp "fzf" } },
     [PSCustomObject]@{ Nome = 'PSFzf'; Comando = { Install-Module PSFzf -Force -Scope CurrentUser } },
-    [PSCustomObject]@{ Nome = 'gsudo'; Comando = { Install-ScoopApp "gsudo" } },
     [PSCustomObject]@{ Nome = 'Less'; Comando = { Install-ScoopApp "less" } },
     [PSCustomObject]@{ Nome = 'eza'; Comando = { Install-ScoopApp "eza" } },
     [PSCustomObject]@{ Nome = 'ov'; Comando = { Install-ScoopApp "ov" } },
@@ -349,6 +274,7 @@ $ArrayPacchettiFacoltativi = @(
     [PSCustomObject]@{ Nome = 'chafa'; Comando = { Install-ScoopApp "chafa" } },
     [PSCustomObject]@{ Nome = 'Dust'; Comando = { Install-ScoopApp "dust" } },
     [PSCustomObject]@{ Nome = 'genact'; Comando = { Install-ScoopApp "genact" } },
+    [PSCustomObject]@{ Nome = 'Fastfetch'; Comando = { Install-ScoopApp "fastfetch" } },
     [PSCustomObject]@{ Nome = 'fd'; Comando = { Install-ScoopApp "fd" } },
     [PSCustomObject]@{ Nome = 'Figurine'; Comando = { Install-ScoopApp "figurine" } },
     [PSCustomObject]@{ Nome = 'Figlet'; Comando = { Install-ScoopApp "figlet" } },
@@ -358,6 +284,7 @@ $ArrayPacchettiFacoltativi = @(
     [PSCustomObject]@{ Nome = 'lf'; Comando = { Install-ScoopApp "lf" } },
     [PSCustomObject]@{ Nome = 'Micro'; Comando = { Install-ScoopApp "micro" } },
     [PSCustomObject]@{ Nome = 'UbuntuMono Nerd Font'; Comando = { Install-ScoopApp "ubuntumono-nf" } },
+    [PSCustomObject]@{ Nome = 'Oh My Posh'; Comando = { Install-ScoopApp "oh-my-posh" } },
     [PSCustomObject]@{ Nome = 'peco'; Comando = { Install-ScoopApp "peco" } },
     [PSCustomObject]@{ Nome = 'PowerPing'; Comando = { Install-ScoopApp "powerping" } },
     [PSCustomObject]@{ Nome = 'procs'; Comando = { Install-ScoopApp "procs" } },
@@ -379,18 +306,18 @@ Write-Host @"
           _    __  __       ___ _    ___
  _ _ _  _| |__|  \/  |_  _ / __| |  |_ _|
 | '_| || | '_ \ |\/| | || | (__| |__ | |
-|_|  \_,_|_.__/_|  |_|\_, |\___|____|___| v0.07
+|_|  \_,_|_.__/_|  |_|\_, |\___|____|___| v0.11
                       |__/
 
 "@ -ForegroundColor "Yellow"
 
-$listaBase = $ArrayPacchettiFondamentali.Nome -join ', '
+$listaBase =$ArrayPacchettiFondamentali.Nome -join ', '
 $listaFacoltativa = $ArrayPacchettiFacoltativi.Nome -join ', '
 
-Write-Host "Installazione BASE ($($ArrayPacchettiFondamentali.Count) pacchetti):" -ForegroundColor Cyan
+Write-Host "Installazione BASE ($($ArrayPacchettiFondamentali.Count) app):" -ForegroundColor Cyan
 Write-Host "$listaBase`n" -ForegroundColor Gray
 
-Write-Host "Installazione COMPLETA (BASE + $($ArrayPacchettiFacoltativi.Count) pacchetti facoltativi):" -ForegroundColor Cyan
+Write-Host "Installazione COMPLETA (BASE + $($ArrayPacchettiFacoltativi.Count) app facoltative):" -ForegroundColor Cyan
 Write-Host "$listaFacoltativa`n" -ForegroundColor Gray
 
 # Funzione menu interattivo: Navigazione Frecce / Tasto di scelta rapida
@@ -401,64 +328,75 @@ function Invoke-InteractiveMenu {
     )
 
     $selectedIndex = 0
-    $keyInfo = $null
-    [Console]::CursorVisible = $false
+    $confirmed = $false
+    # Block height: message + blank + options + blank + hint
+    $blockHeight = $Options.Count + 4
 
-    # Salva la posizione corrente del cursore per aggiornare l'interfaccia sullo stesso punto
+    [Console]::CursorVisible = $false
     $topPos = [Console]::CursorTop
 
-    while ($true) {
-        [Console]::SetCursorPosition(0, $topPos)
-        Write-Host "$Message`n" -ForegroundColor Yellow
+    try {
+        while ($true) {
+            [Console]::SetCursorPosition(0, $topPos)
+            Write-Host "$Message`n" -ForegroundColor Yellow
 
-        for ($i = 0; $i -lt $Options.Count; $i++) {
-            $opt = $Options[$i]
-            if ($i -eq $selectedIndex) {
-                Write-Host "  > [$($opt.HotKey)] $($opt.Label) " -ForegroundColor Cyan -NoNewline
-                Write-Host "- $($opt.Description)" -ForegroundColor DarkGray
-            } else {
-                Write-Host "    [$($opt.HotKey)] $($opt.Label) " -ForegroundColor Gray -NoNewline
-                Write-Host "- $($opt.Description)" -ForegroundColor DarkGray
+            for ($i = 0; $i -lt $Options.Count; $i++) {
+                $opt = $Options[$i]
+                if ($confirmed -and $i -eq $selectedIndex) {
+                    # Final state: chosen line rewritten in White, in place
+                    Write-Host "  > [$($opt.HotKey)] $($opt.Label) - $($opt.Description)" -ForegroundColor White
+                } elseif (-not $confirmed -and $i -eq $selectedIndex) {
+                    Write-Host "  > [$($opt.HotKey)] $($opt.Label) " -ForegroundColor Cyan -NoNewline
+                    Write-Host "- $($opt.Description)" -ForegroundColor DarkGray
+                } else {
+                    Write-Host "    [$($opt.HotKey)] $($opt.Label) " -ForegroundColor Gray -NoNewline
+                    Write-Host "- $($opt.Description)" -ForegroundColor DarkGray
+                }
+            }
+
+            Write-Host "`nUsa [Freccia Su/Giu] o premi la lettera scorciatoia." -ForegroundColor DarkGray
+
+            # Recompute the top row from the cursor: stays correct even if the buffer scrolled
+            $topPos = [Math]::Max(0, [Console]::CursorTop - $blockHeight)
+
+            if ($confirmed) { return $selectedIndex }
+
+            $keyInfo = [Console]::ReadKey($true)
+
+            if ($keyInfo.Key -eq [ConsoleKey]::UpArrow) {
+                $selectedIndex = if ($selectedIndex -gt 0) { $selectedIndex - 1 } else { $Options.Count - 1 }
+            }
+            elseif ($keyInfo.Key -eq [ConsoleKey]::DownArrow) {
+                $selectedIndex = if ($selectedIndex -lt $Options.Count - 1) { $selectedIndex + 1 } else { 0 }
+            }
+            elseif ($keyInfo.Key -eq [ConsoleKey]::Enter) {
+                $confirmed = $true
+            }
+            else {
+                $charPressed = $keyInfo.KeyChar.ToString().ToUpper()
+                for ($i = 0; $i -lt $Options.Count; $i++) {
+                    if ($Options[$i].HotKey.ToUpper() -eq $charPressed) {
+                        $selectedIndex = $i
+                        $confirmed = $true
+                        break
+                    }
+                }
             }
         }
-
-        Write-Host "`nUsa [Freccia Su/Giu] o premi la lettera scorciatoia." -ForegroundColor DarkGray
-
-        $keyInfo = [Console]::ReadKey($true)
-
-        # Gestione Frecce e Invio
-        if ($keyInfo.Key -eq [ConsoleKey]::UpArrow) {
-            $selectedIndex = if ($selectedIndex -gt 0) { $selectedIndex - 1 } else { $Options.Count - 1 }
-        }
-        elseif ($keyInfo.Key -eq [ConsoleKey]::DownArrow) {
-            $selectedIndex = if ($selectedIndex -lt $Options.Count - 1) { $selectedIndex + 1 } else { 0 }
-        }
-        elseif ($keyInfo.Key -eq [ConsoleKey]::Enter) {
-            [Console]::CursorVisible = $true
-            Write-Host ""
-            return $selectedIndex
-        }
-
-        # Selezione immediata via Lettera (senza premere Invio)
-        $charPressed = $keyInfo.KeyChar.ToString().ToUpper()
-        for ($i = 0; $i -lt $Options.Count; $i++) {
-            if ($Options[$i].HotKey.ToUpper() -eq $charPressed) {
-                [Console]::CursorVisible = $true
-                Write-Host ""
-                return $i
-            }
-        }
+    }
+    finally {
+        [Console]::CursorVisible = $true
     }
 }
 
 # Definizione opzioni del menu
 $menuOptions = @(
-    @{ HotKey = 'B'; Label = 'Base';     Description = "Installazione dei soli $($ArrayPacchettiFondamentali.Count) pacchetti fondamentali" },
-    @{ HotKey = 'C'; Label = 'Completa'; Description = "Installazione di tutti i $($ArrayPacchettiFondamentali.Count + $ArrayPacchettiFacoltativi.Count) pacchetti (Base + Facoltativi)" }
+    @{ HotKey = 'B'; Label = 'Base';     Description = "Installazione delle $($ArrayPacchettiFondamentali.Count) app fondamentali" },
+    @{ HotKey = 'C'; Label = 'Completa'; Description = "Installazione di tutte le $($ArrayPacchettiFondamentali.Count + $ArrayPacchettiFacoltativi.Count) app (Base + Facoltative)" }
 )
 
 # Esecuzione del menu
-$scelta = Invoke-InteractiveMenu -Message "Scegli la suite di pacchetti da installare:" -Options $menuOptions
+$scelta = Invoke-InteractiveMenu -Message "Scegli la suite da installare:" -Options $menuOptions
 
 if ($scelta -eq 0) {
     $tipoInstallazione = "BASE"
@@ -468,35 +406,36 @@ if ($scelta -eq 0) {
     $ArrayAppDaInstallare = $ArrayPacchettiFondamentali + $ArrayPacchettiFacoltativi
 }
 
-Write-LogAdvanced "Avvio installazione $($tipoInstallazione) ($($ArrayAppDaInstallare.Count) pacchetti)." -Level "INFO" -Mode "Console"
+Write-Host ""
 
-# Scoop: Installazione/aggiornamento (INFO: https://scoop.sh):
-Write-LogAdvanced "scoop: Installazione/aggiornamento..." -Level "INFO" -Mode "Console"
+Write-LogAdvanced "Avvio installazione $($tipoInstallazione) ($($ArrayAppDaInstallare.Count) app)." -Level "INFO" -Mode "Console"
+
+# Scoop: Installazione/aggiornamento
+Write-LogAdvanced "Scoop: Installazione/aggiornamento..." -Level "INFO" -Mode "Console"
 try {
     scoop update | Out-Null
 }
 catch {
-    Set-ExecutionPolicy RemoteSigned -Scope Process -Force
-    Invoke-Expression "& {$(Invoke-RestMethod get.scoop.sh)} -RunAsAdmin"
+    Invoke-Expression "& {$(Invoke-RestMethod get.scoop.sh)}"
 }
 
-# Scoop: installazione git (serve per aggiornamento di scoop e per aggiungere buckets):
+# Scoop: installazione git
 Install-ScoopApp("git")
 
-# Scoop: disabilita warnings per i download:
-Write-LogAdvanced "scoop: Configurazione..." -Level "INFO" -Mode "Console"
+# Scoop: disabilita warnings per i download
+Write-LogAdvanced "Scoop: Configurazione..." -Level "INFO" -Mode "Console"
 scoop config aria2-warning-enabled false
 
-# Scoop: aggiunta buckets:
+# Scoop: aggiunta buckets
 Enable-ScoopBucket("extras")
 Enable-ScoopBucket("nerd-fonts")
 
-# Installa Windows Terminal se necessario:
+# Installa Windows Terminal se necessario
 if (-not (Get-Command wt.exe -ErrorAction SilentlyContinue)) { 
     Install-ScoopApp("windows-terminal")
 }
 
-# Calcolo preventivo di $maxTextLength su tutti gli elementi da elaborare
+# Calcolo preventivo di $maxTextLength su tutti gli elementi da elaborare 
 $maxTextLength = 0
 foreach ($app in $ArrayAppDaInstallare) {
     $len = "Installazione $($app.Nome)".Length
@@ -505,9 +444,9 @@ foreach ($app in $ArrayAppDaInstallare) {
     }
 }
 
-# Installazione dei pacchetti:
-$Script:StartTime = Get-Date    # Ri-definisco così da avere un'indicazione più realistica
-$c = 0    # Contatore pacchetto in fase di installazione
+# Installazione dei pacchetti
+$Script:StartTime = Get-Date 
+$c = 0
 foreach ($app in $ArrayAppDaInstallare) {
     $c++
     $msg = "Installazione $($app.Nome)"
@@ -515,7 +454,6 @@ foreach ($app in $ArrayAppDaInstallare) {
     & $app.Comando
 }
 
-# Clear eventuale riga rimanente della progressbar inline
 Write-Host ""
 
 #Region Restore Configuration Files
@@ -531,9 +469,7 @@ if (Test-Path $restoreScript) {
 }
 #EndRegion
 
-
-
-# Chiusura script:
+# Chiusura script
 $Host.UI.RawUI.WindowTitle = "100% [${ScriptName}]"
 $elapsedTotal = (Get-Date) - $Script:StartTime
 $elapsedTotalStr = "{0:D2}:{1:D2}:{2:D2}" -f [int]$elapsedTotal.Hours, [int]$elapsedTotal.Minutes, [int]$elapsedTotal.Seconds
