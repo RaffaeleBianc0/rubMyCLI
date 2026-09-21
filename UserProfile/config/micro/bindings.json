@@ -1,0 +1,6 @@
+{
+    "Alt-/": "lua:comment.comment",
+    "Ctrl-Backspace": "DeleteWordLeft",
+    "Ctrl-Shift-Left": "SelectWordLeft",
+    "CtrlUnderscore": "lua:comment.comment"
+}
