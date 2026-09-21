@@ -133,7 +133,7 @@ If a file named `rubMyCLI-dotfiles-restore.ps1` is present **in the same folder*
 
 
 # 📌 TODO
-1. Change all the internal texts to English (currently Italian).
+1. Change all the internal texts to English (currently Italian) - only if somebody asks for this.
 2. Gather all the dotfiles in a single folder as **hard links** to the original files - like:
 ```batch
 mklink  /H  %USERPROFILE%\dotfiles\appname.cfg  %USERPROFILE%\.config\original_path\original.cfg
