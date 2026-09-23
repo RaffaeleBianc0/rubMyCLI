@@ -88,9 +88,8 @@ _Files are ready... soon to be published_
 | zoxide | Smarter `cd` that learns your habits |
  
 ### Optional tools (Full profile)
- 
-`btop` · `byenow` · `csview` · `chafa` · `dust` · `genact` · `fastfetch` · `fd` · `figurine` · `figlet` · `file` · `gping` · `grex` · `lf` · `micro` · `UbuntuMono Nerd Font` · `oh-my-posh` · `peco` · `PowerPing` · `procs` · `q` · `s` · `say` · `serve` · `speedtest-cli` · `tldr` · `tre-command` · `trippy` · `xsv` · `y-cruncher`
 
+[btop](https://github.com/aristocratos/btop) · [byenow](https://github.com/apankrat/byenow) · [csview](https://github.com/Alfred-Jijo/csview.h) · [chafa](https://github.com/hpjansson/chafa) · [dust](https://github.com/bootandy/dust) · [genact](https://github.com/svenstaro/genact) · [fastfetch](https://github.com/fastfetch-cli/fastfetch) · [fd](https://github.com/sharkdp/fd) · [figurine](https://github.com/arsham/figurine) · [figlet](https://github.com/Ace-Radom/figlet4win) · file (comando di sistema) · [gping](https://github.com/orf/gping) · [grex](https://github.com/pemistahl/grex) · [lf](https://github.com/gokcehan/lf) · [micro](https://github.com/zyedidia/micro) · [UbuntuMono Nerd Font](https://github.com/ryanoasis/nerd-fonts) · [oh-my-posh](https://github.com/JanDeDobbeleer/oh-my-posh) · [peco](https://github.com/peco/peco) · [PowerPing](https://github.com/Killeroo/PowerPing) · [procs](https://github.com/dalance/procs) · [q](https://github.com/harelba/q) · [s](https://github.com/zquestz/s) · say (utility di sistema) · [serve](https://github.com/vercel/serve) · [speedtest-cli](https://github.com/sivel/speedtest-cli) · [tldr](https://github.com/tldr-pages/tldr) · [tre-command](https://github.com/dduugg/tre) · [trippy](https://github.com/fujiapple852/trippy) · [xsv](https://github.com/BurntSushi/xsv) · [y-cruncher](http://www.numberworld.org/y-cruncher/)
 
  
 ## ⚙️ How it works
