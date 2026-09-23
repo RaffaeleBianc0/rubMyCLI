@@ -18,7 +18,6 @@ _Files are ready... soon to be published_
 - 🔁 **Idempotent**: already-installed packages are updated instead of reinstalled, so it is safe to re-run at any time
 - 🗂️ **Automatic prerequisites**: installs/updates Scoop, Git, the `extras` and `nerd-fonts` buckets, and Windows Terminal if missing
 - ♻️ **Dotfiles restore hook**: optionally runs a companion script to restore your configuration files
-- 📊 **Live progress bar** and **Colored, timestamped console log** (`INFO` / `WARN` / `ERROR` / `DEBUG`)
 - 💻 **Rich PowerShell $PROFILE** is installed (see below for the detailed information)
 
 
@@ -43,7 +42,7 @@ _Files are ready... soon to be published_
 
 ## 🚀 Installation & Usage
  
-1. **Clone** the repository (or download the script):
+1. **Clone** the repository (or download the whole folder):
 ```powershell
    git clone https://github.com/RaffaeleBianc0/rubMyCLI.git
    cd rubMyCLI
@@ -63,8 +62,8 @@ _Files are ready... soon to be published_
    | `B` | Base | the essential items |
    | `C` | Full | Base + a lot of cool optional tools |
    Use `↑` / `↓` and `Enter`, or press the hotkey directly.
-5. **Wait** for the progress bar to complete, then press `Enter` to close.
-> 💡 Open a new terminal window at the end so that PATH changes, fonts and modules are picked up.
+5. **Wait** for the script to complete, then press `Enter` to close.
+6. Open a **new Terminal window** at the end so that PATH changes, fonts and modules are picked up.
  
 ## 📦 What gets installed
  
@@ -120,7 +119,8 @@ Each entry follows the same pattern:
  
 ## 🗃️ Dotfiles restore (optional)
  
-If a file named `rubMyCLI-dotfiles-restore.ps1` is present **in the same folder** as the main script, it is executed at the end of the installation. If it is missing, the script prints a warning and continues.
+If a file named `rubMyCLI-dotfiles-restore.ps1` is present **in the same folder** as the main script, it is executed at the end of the installation.  
+If it is missing, the script prints a warning and continues. _Please note that some issue might occur if you don't restore my settings - i.e. my $PROFILE assumes stuff is on place._
 
 
  
@@ -129,7 +129,6 @@ If a file named `rubMyCLI-dotfiles-restore.ps1` is present **in the same folder*
 - **Icons look broken / show squares** → set your terminal font to a Nerd Font (e.g. `CascadiaCode Nerd Font`)
 - **Scoop refuses to install** → run the script from a non-elevated PowerShell window
 - **A package fails to install** → re-run the script; already-installed items are simply updated
-- **Progress bar looks garbled** → use Windows Terminal or a console with ANSI escape sequence support
 
 
 
@@ -146,7 +145,7 @@ It configures command-line editing, fuzzy finding, a custom prompt, modern repla
 
 ### Highlights
 - Loads **only inside Windows Terminal** (detected via `$env:WT_SESSION`); in any other host it just prints the PowerShell version and exits.
-- Graceful degradation: every optional feature is version-gated (PS 5.1 vs 7+) or tool-gated, so the profile keeps working when a tool is missing.
+- Graceful degradation: optional features are often version-gated (PS 5.1 vs 7+) or tool-gated, so the profile keeps working when a tool is missing.
 - Built-in **load-time profiler** to debug startup slowdowns.
 
 ### Requirements
@@ -187,14 +186,11 @@ Set `$debugMessages = $true` at the top of the file to print how long each modul
 
 ### Prompt
 
-The built-in prompt shows, in order:
-
-1. **Clock** (`H:mm:ss`) on a blue background.
-2. **Full current path** on a white background.
-3. **Last command duration and outcome**: a red `!` badge is shown when the last command failed.
-4. A `>` on a new line, **red when running as Administrator**, white otherwise.
-
+The built-in prompt shows, in order:  
+clock, current path, last command duration and outcome (a red `!` badge is shown when the last command failed), a `>` on a new line (red when running as Administrator).  
 On PowerShell 7+, if `oh-my-posh` is installed and `%APPDATA%\oh-my-posh\rb.omp.json` exists, the oh-my-posh theme replaces the built-in prompt.
+
+
 
 ### Command shortcuts
 
