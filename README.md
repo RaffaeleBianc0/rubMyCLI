@@ -3,7 +3,14 @@
 `rubMyCLI.ps1` customizes both **PowerShell** and **CMD** by installing a curated set of CLI tools through [Scoop](https://scoop.sh).  
  
 ---
- 
+
+# 📽️ Video footage
+- [Installation]()
+- [Usage]()
+_Files are ready... soon to be published_
+
+
+
 ## ✨ Features
  
 - 📦 **Two install profiles**: Base (essentials) and Full (Base + optional tools)
