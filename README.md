@@ -5,10 +5,8 @@
 ---
 
 ## 📽️ Video footage
-- [Installation]()
-- [Usage]()
-
-_Files are ready... soon to be published_
+- [Running it](https://youtu.be/QY9bmWhip48)
+- [Results](https://youtu.be/o0MqeateVb4)
 
 
 
