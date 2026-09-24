@@ -69,21 +69,23 @@
  
 | Tool | Purpose |
 |---|---|
-| Winget | Windows package manager |
-| PowerShell (`pwsh`) | Modern cross-platform PowerShell |
-| Terminal-Icons | File and folder icons in PowerShell listings |
-| bat | `cat` with syntax highlighting |
-| CompletionPredictor | Predictive IntelliSense-style completions |
-| Clink + clink-completions | Bash-like line editing and completions for CMD |
-| Clink autorun | Enables Clink automatically in every CMD session |
-| fzf + PSFzf | Fuzzy finder and its PowerShell integration |
+| [Winget](https://github.com/microsoft/winget-cli) | Windows package manager |
+| [PowerShell (`pwsh`)](https://github.com/PowerShell/PowerShell) | Modern cross-platform PowerShell |
+| [Terminal-Icons](https://github.com/devblackops/Terminal-Icons) | File and folder icons in PowerShell listings |
+| [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting |
+| [CompletionPredictor](https://github.com/PowerShell/CompletionPredictor) | Predictive IntelliSense-style completions |
+| [Clink + clink-completions](https://github.com/mridgers/clink) | Bash-like line editing and completions for CMD |
+| [Clink autorun](https://github.com/mridgers/clink) | Enables Clink automatically in every CMD session |
+| [fzf + PSFzf](https://github.com/junegunn/fzf) | Fuzzy finder and its PowerShell integration |
 | Less | Classic pager |
-| eza | Modern `ls` replacement |
-| ov | Feature-rich terminal pager |
-| CascadiaCode Nerd Font | Font with icon glyphs |
-| scoop-completion | Tab completion for Scoop |
-| zoxide | Smarter `cd` that learns your habits |
- 
+| [eza](https://github.com/eza-community/eza) | Modern `ls` replacement |
+| [ov](https://github.com/noborus/ov) | Feature-rich terminal pager |
+| [CascadiaCode Nerd Font](https://github.com/ryanoasis/nerd-fonts) | Font with icon glyphs |
+| [scoop-completion](https://github.com/Moeologist/scoop-completion) | Tab completion for Scoop |
+| [zoxide](https://github.com/ajeetdsouza/zoxide) | Smarter `cd` that learns your habits |
+
+
+
 ### Optional tools (Full profile)
 
 [btop](https://github.com/aristocratos/btop) · [byenow](https://github.com/apankrat/byenow) · [csview](https://github.com/Alfred-Jijo/csview.h) · [chafa](https://github.com/hpjansson/chafa) · [dust](https://github.com/bootandy/dust) · [genact](https://github.com/svenstaro/genact) · [fastfetch](https://github.com/fastfetch-cli/fastfetch) · [fd](https://github.com/sharkdp/fd) · [figurine](https://github.com/arsham/figurine) · [figlet](https://github.com/Ace-Radom/figlet4win) · [file](https://github.com/file/file) · [gping](https://github.com/orf/gping) · [grex](https://github.com/pemistahl/grex) · [lf](https://github.com/gokcehan/lf) · [micro](https://github.com/zyedidia/micro) · [UbuntuMono Nerd Font](https://github.com/ryanoasis/nerd-fonts) · [oh-my-posh](https://github.com/JanDeDobbeleer/oh-my-posh) · [peco](https://github.com/peco/peco) · [PowerPing](https://github.com/Killeroo/PowerPing) · [procs](https://github.com/dalance/procs) · [q](https://github.com/harelba/q) · [s](https://github.com/zquestz/s) · [say](https://github.com/svanichkin/say) · [serve](https://github.com/vercel/serve) · [speedtest-cli](https://github.com/sivel/speedtest-cli) · [tldr](https://github.com/tldr-pages/tldr) · [tre-command](https://github.com/dduugg/tre) · [trippy](https://github.com/fujiapple852/trippy) · [xsv](https://github.com/BurntSushi/xsv) · [y-cruncher](http://www.numberworld.org/y-cruncher/)
