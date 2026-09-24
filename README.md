@@ -5,8 +5,8 @@
 ---
 
 ## 📽️ Video footage
-- [Running it](https://youtu.be/QY9bmWhip48)
-- [Results](https://youtu.be/o0MqeateVb4)
+- [Running it (installation)](https://youtu.be/QY9bmWhip48)
+- [Results (mini-demo)](https://youtu.be/o0MqeateVb4)
 
 
 
